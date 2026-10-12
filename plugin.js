@@ -27,6 +27,7 @@ const MAX_ALTERNATIVES = 8;
 const MAX_TILES = 24;
 const POSTER_PARALLEL = 6;
 const SPARE_TILES = 6;
+const ART_CANDIDATES = 8;
 const POPULAR_GENRES = ["uncensored", "3d", "big-boobs", "blowjob", "creampie", "ahegao", "anal", "school-girls", "harem", "bdsm", "romance", "fantasy", "comedy", "drama", "milf", "ntr", "bondage", "tentacle", "futanari", "yuri", "incest", "monster", "demon", "action"];
 
 // ---- 1. texts -------------------------------------------------------------------------------------------------
@@ -485,12 +486,12 @@ export async function categories() {
   // art finds them out, and they are left out, a few spare candidates standing in for them.
   const DEAD = "-";
   const asked = await mapLimit(order.slice(0, MAX_TILES + SPARE_TILES), POSTER_PARALLEL, async (slug) => {
-    let art = "";
+    let posters = [];
     try {
-      art = await cached("art:" + slug, FRESH_ART_MS, async () => {
+      posters = await cached("art2:" + slug, FRESH_ART_MS, async () => {
         try {
-          const first = (await genrePage(slug, 1)).items[0];
-          return first && first.poster ? first.poster : "";
+          // A few candidates, not one: the popular titles sit first in many genres, and the tiles should not repeat a picture.
+          return (await genrePage(slug, 1)).items.map((i) => i.poster).filter(Boolean).slice(0, ART_CANDIDATES);
         } catch (e) {
           if (e && e.code === "not_found") return DEAD;
           throw e;
@@ -499,12 +500,19 @@ export async function categories() {
     } catch (e) {
       kino.log("genre " + slug + " art failed: " + (e && e.message));
     }
-    if (art === DEAD) return null;
-    const tile = { id: slug, title: String(bySlug.get(slug)).slice(0, 40), ref: "g:" + slug, adult: true };
-    if (art) tile.art = art;
-    return tile;
+    return posters === DEAD ? null : { slug, posters: Array.isArray(posters) ? posters : [] };
   });
-  const tiles = asked.filter(Boolean).slice(0, MAX_TILES);
+  const used = new Set();
+  const tiles = asked
+    .filter(Boolean)
+    .slice(0, MAX_TILES)
+    .map(({ slug, posters }) => {
+      const art = posters.find((u) => !used.has(u)) || posters[0] || "";
+      if (art) used.add(art);
+      const tile = { id: slug, title: String(bySlug.get(slug)).slice(0, 40), ref: "g:" + slug, adult: true };
+      if (art) tile.art = art;
+      return tile;
+    });
   return tiles;
 }
 

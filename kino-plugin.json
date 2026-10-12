@@ -1,7 +1,7 @@
 {
   "id": "hentaimama",
   "name": "HentaiMama",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "apiVersion": 6,
   "entry": "plugin.js",
   "description": "Hentai 18+ en HD con subtítulos en inglés, desde HentaiMama. Solo se muestra con el código 18+ desbloqueado.",
