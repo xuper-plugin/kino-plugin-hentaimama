@@ -12,8 +12,13 @@ En Kino: **Plugins ▸ Agregar un plugin ▸ Kino**, y pega la dirección de est
 
 ## 18+
 
-Todo título, episodio y categoría va marcado `adult`: Kino solo lo muestra con el código 18+ desbloqueado
-(Ajustes ▸ Adultos). Con el código bloqueado el plugin aparece vacío.
+Todo título, episodio y categoría va marcado `adult: true` (manifiesto con categoría `adult`, apiVersion 6): Kino solo
+lo muestra con el código 18+ desbloqueado (Ajustes ▸ Adultos) y lo pide de nuevo al volver a bloquear. Con el código
+bloqueado el plugin aparece vacío.
+
+Se comprobó contra el sitio en vivo: 191 entradas de búsqueda, Inicio, listas, géneros, sección y categorías, y las 191
+llevan la marca. La sección propia **no lleva hero** a propósito: el hero no tiene marca `adult` y mostraría un título
+y un póster con el código bloqueado.
 
 ## Qué trae
 

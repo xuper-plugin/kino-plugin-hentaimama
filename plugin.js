@@ -36,7 +36,6 @@ const TEXTS = {
     noStreams: "Este episodio no tiene video disponible por ahora. Prueba otro o vuelve más tarde.",
     rowSeries: "Series",
     rowRecent: "Episodios recientes",
-    sectionHero: "Lo más reciente de HentaiMama.",
     tabSeries: "Series",
     tabRecent: "Recientes",
     cacheStatus: "Caché: {n} entradas, {kb} KB",
@@ -58,7 +57,6 @@ const TEXTS = {
     noStreams: "This episode has no video available right now. Try another or come back later.",
     rowSeries: "Series",
     rowRecent: "Recent episodes",
-    sectionHero: "The latest from HentaiMama.",
     tabSeries: "Series",
     tabRecent: "Recent",
     cacheStatus: "Cache: {n} entries, {kb} KB",
@@ -437,11 +435,7 @@ export async function section({ tab }) {
     kino.log("section " + chosen + " failed: " + (e && e.message));
   }
   const answer = { tabs, tab: chosen, rows: items.length ? [{ id: "row-" + chosen, title: t(LISTS[chosen].title), items, ref: "l:" + chosen }] : [] };
-  if (items.length) {
-    const pick = items[Math.floor(Date.now() / 86400000) % items.length];
-    answer.hero = { title: pick.title, text: t("sectionHero") };
-    if (pick.poster) answer.hero.image = pick.poster;
-  }
+  // No hero on purpose: a hero has no `adult` mark, so its title and image would show while the 18+ code is locked.
   return answer;
 }
 
