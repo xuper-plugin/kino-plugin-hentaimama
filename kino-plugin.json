@@ -1,14 +1,16 @@
 {
   "id": "hentaimama",
   "name": "HentaiMama",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "apiVersion": 6,
   "entry": "plugin.js",
   "description": "Hentai 18+ en HD con subtítulos en inglés, desde HentaiMama. Solo se muestra con el código 18+ desbloqueado.",
   "author": "xuper-plugin",
   "homepage": "https://hentaimama.io/",
   "hosts": [
-    "hentaimama.io"
+    "hentaimama.io",
+    "gdvid.info",
+    "*.gdvid.info"
   ],
   "capabilities": [
     "search",
@@ -40,9 +42,18 @@
       "label": "Calidad preferida",
       "default": "1080p",
       "options": [
-        { "value": "1080p", "label": "1080p" },
-        { "value": "720p", "label": "720p" },
-        { "value": "480p", "label": "480p" }
+        {
+          "value": "1080p",
+          "label": "1080p"
+        },
+        {
+          "value": "720p",
+          "label": "720p"
+        },
+        {
+          "value": "480p",
+          "label": "480p"
+        }
       ],
       "hint": "Las otras calidades y servidores quedan en el menú Servidor y calidad."
     },
@@ -54,11 +65,6 @@
       "hint": "Series y episodios recientes en el Inicio de Kino."
     },
     {
-      "key": "toolsSection",
-      "type": "section",
-      "label": "Herramientas"
-    },
-    {
       "key": "cache",
       "type": "status",
       "label": "Caché"
@@ -68,6 +74,23 @@
       "type": "action",
       "label": "Vaciar caché",
       "confirm": "¿Vaciar la caché de listas y episodios?"
+    },
+    {
+      "key": "toolsSection",
+      "type": "section",
+      "label": "Herramientas"
+    },
+    {
+      "key": "health",
+      "type": "status",
+      "label": "Estado"
+    },
+    {
+      "key": "probe",
+      "type": "action",
+      "label": "Comprobar sitio"
     }
-  ]
+  ],
+  "telemetry": true,
+  "debug": false
 }

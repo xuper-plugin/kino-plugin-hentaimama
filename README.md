@@ -17,34 +17,70 @@ Todo título, episodio y categoría va marcado `adult`: Kino solo lo muestra con
 
 ## Qué trae
 
-- **Búsqueda** por título.
-- **Inicio:** episodios recientes y la lista de series.
+- **Búsqueda** por título (ordenada por parecido, con un segundo intento con el título original).
+- **Inicio:** episodios recientes y la lista de series. **Sección propia** con dos pestañas.
 - **Categorías:** 24 géneros (los más populares primero).
 - **Episodios:** lista con número, captura y fecha.
-- **Video:** hasta 9 copias por episodio en el menú **Servidor y calidad** (1080p, 720p, 480p, HLS). El ajuste
-  **Calidad preferida** decide cuál abre primero. Se puede descargar.
+- **Video:** hasta 8 copias por episodio en el menú **Servidor y calidad** (1080p, 720p, 480p, original y dos
+  servidores firmados). El ajuste **Calidad preferida** decide cuál abre primero. Se puede descargar.
 
-## Cómo funciona
+## Cómo se resuelve un episodio (y por qué es rápido)
 
-1. La página del episodio trae el id del reproductor (`action: 'get_player_contents'`, `a: <id>`).
-2. Un `POST` a `/wp-admin/admin-ajax.php` devuelve los cinco espejos (`<iframe>`).
-3. Cada espejo trae un `sources: [{file, label}]` con la URL del archivo; el plugin los ordena por calidad y servidor.
+El sitio lista cinco espejos por episodio; cada uno es un iframe cuyo parámetro `p` es la ruta del archivo en base64.
 
-Medido el 2026-10-12 desde un Mac, sin cabeceras especiales (ni `Referer`): `gdvid.info` ~12 Mbit/s,
-`na-01.javprovider.com` ~7, `hentaidoge.org` ~4. Todos responden `206` a un `Range`. Los enlaces de `hentaidoge.org` y
-`javprovider.com` son firmados y caducan en unas horas; Kino vuelve a llamar a `resolve` cuando eso pasa.
+| Espejo | Qué es | Cómo lo usa el plugin |
+|---|---|---|
+| `rtmp`, `r2-mp4` | `gdvid.info/<ruta>` y `gdvid.info/hls/<ruta>` (1080p/720p/480p), sin firma | **Se arman sin abrir ningún iframe** y se prueban con una petición de 1 byte |
+| `hls-mp4`, `newjav`, `hls` | enlaces firmados (`hentaidoge.org`, `javprovider.com`) | Copias **perezosas**: solo se abren si las eliges o si las rápidas no existen |
+
+Pasos de `resolve`: (1) la página del episodio, para el id del reproductor (se recuerda un día); (2) un `POST` a
+`admin-ajax.php` con la lista de espejos (se recuerda 10 minutos); (3) una petición `Range: bytes=0-1` por archivo, en
+paralelo, para descartar los muertos. Primera vez: 3 peticiones; después, 1 o 2.
+
+Robustez, tomada del plugin AnimES:
+
+- **Presupuesto de 17 s:** cada paso recibe lo que queda, porque el host espera toda petición en vuelo.
+- **Un reintento** si el primer intento falló rápido; un 404 de la página es final.
+- **Salud:** si todos los archivos sin firma responden 403/404/410, ese host se aparta 3 minutos, se abren los firmados
+  de inmediato y se reporta `mirror_dead` (telemetría). Un fallo de red no apaga nada.
+- **Sin cabeceras especiales:** no hizo falta `Referer` ni `Sec-Fetch-*` (se probó cada servidor).
+- **Caché con respaldo:** si el sitio falla, se sirve la lista vieja (hasta 24 h).
+- **Ajustes:** estado del sitio y de los archivos, "Comprobar sitio", "Vaciar caché".
+
+## Mediciones
+
+Fire Stick 4K Max, Wi-Fi 2.4 GHz, `curl` desde el aparato, 6 MB por archivo (2026-10-12):
+
+| Copia | Velocidad | Primer byte |
+|---|---|---|
+| `gdvid.info` 1080p | **16.8 Mbit/s** (2.1 MB/s) | 0.3–0.5 s |
+| `hentaidoge.org` (firmado) | 6.4–8.1 Mbit/s | 0.6–1.2 s |
+| `javprovider.com` (firmado) | 5.6 Mbit/s | 0.4 s |
+
+El 1080p de un episodio de 18.8 min pesa 243 MB (**1.7 Mbit/s**), así que la copia principal rinde ~10 veces lo que
+necesita. Con 720p son 133 MB y con 480p 81 MB.
+
+Tiempo de `resolve` desde un Mac: ~2 s en frío.
+
+## Qué se verificó y qué no
+
+- **Verificado:** el SDK acepta el plugin (`validate.mjs`); lectura en vivo de búsqueda, Inicio, categorías, episodios
+  y `resolve` en 6 series; 11 escenarios simulados (host caído, sin red, calidad muerta, página 404, JSON roto,
+  reintento, copia perezosa); los subtítulos son **ingleses quemados en el video** (se extrajo un fotograma).
+- **No probado:** reproducción dentro de Kino en un aparato. Con el código 18+ bloqueado no se puede ver el plugin
+  desde fuera, y el código es del dueño del aparato.
+- **Sin icono.**
 
 ## Permisos
 
-- `hosts`: `hentaimama.io` (catálogo y páginas).
-- `streamHosts: "any"`: el video está en servidores que rotan (`gdvid.info`, `hentaidoge.org`, `javprovider.com`); Kino
-  muestra una línea roja al instalar.
+- `hosts`: `hentaimama.io` (páginas) y `gdvid.info` / `*.gdvid.info` (solo para comprobar que el archivo responde).
+- `streamHosts: "any"`: los servidores firmados rotan (`hentaidoge.org`, `na-01.javprovider.com`); Kino muestra una
+  línea roja al instalar.
+- `telemetry: true`: Kino recibe los avisos `mirror_dead`, `mirror_empty` y `no_player` (sin datos personales).
 
 ## Límites
 
-- Solo HentaiMama. El addon original también usa HentaiTV y HentaiSea; no se portaron todavía.
-- Sin icono ni medición en un aparato Android: lo probado fue el contrato con el SDK (`validate.mjs`) y la lectura en
-  vivo del sitio.
-- Los subtítulos van quemados en inglés; los episodios marcados RAW no tienen.
-- Si el sitio cambia su tema, lo primero que se rompe es el análisis de tarjetas (`parseSeriesPage`) y la lectura de
-  `sources` (`embedSources`).
+- Solo HentaiMama. El addon original también usa HentaiTV y HentaiSea; no se portaron.
+- Algunos episodios son RAW (sin subtítulos); el sitio lo marca solo en la lista de recientes y no se muestra.
+- Si el sitio cambia su tema, lo primero que se rompe es `parseSeriesPage`, la lectura de `p` en `mirrorOf` o la de
+  `sources` en `embedSources`; la telemetría lo avisa como `no_player` o `mirror_empty`.
