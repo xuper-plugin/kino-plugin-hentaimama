@@ -1,7 +1,7 @@
 {
   "id": "hentaimama",
   "name": "HentaiMama",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "apiVersion": 6,
   "entry": "plugin.js",
   "description": "Hentai 18+ en HD con subtítulos en inglés, desde HentaiMama. Solo se muestra con el código 18+ desbloqueado.",
@@ -10,7 +10,9 @@
   "hosts": [
     "hentaimama.io",
     "gdvid.info",
-    "*.gdvid.info"
+    "*.gdvid.info",
+    "hentaidoge.org",
+    "*.javprovider.com"
   ],
   "capabilities": [
     "search",

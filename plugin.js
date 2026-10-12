@@ -5,9 +5,8 @@
 // Read it top to bottom:
 //   1. constants   2. texts   3. cache   4. site client   5. parsing   6. search and paging   7. home, browse, categories
 //   8. episodes   9. mirrors and resolve   10. health and settings
-// Declared hosts (kino.fetch): hentaimama.io for the pages, gdvid.info to probe a file before offering it. The signed
-// copies (hentaidoge.org, javprovider.com) are played, never fetched by the plugin: `streamHosts: "any"` covers the
-// servers that rotate.
+// Declared hosts (kino.fetch): hentaimama.io for the pages; the video servers only to probe a file with one byte before
+// offering it. `streamHosts: "any"` covers the servers that rotate.
 
 const SITE = "https://hentaimama.io";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -743,7 +742,15 @@ export async function resolve(ref) {
       kino.log.report("mirror_empty", lazy[2]);
       throw kino.error("not_found", "mirror " + lazy[2] + " has no file", { userMessage: t("copyFailed") });
     }
-    return { url: ranked[0].url, mime: ranked[0].mime, label: ranked[0].label, expiresInSeconds: STREAM_EXPIRES_S };
+    // A signed link can be dead on arrival (the mirror lists a file its server no longer has): asking for one byte now lets
+    // Kino move to the next copy instead of failing at play. An unreachable server (not a "no") is let through.
+    const checks = await Promise.all(ranked.slice(0, 3).map((r) => probe(r.url)));
+    const at = checks.findIndex((v) => v !== "dead");
+    if (at < 0) {
+      kino.log.report("mirror_dead", lazy[2]);
+      throw kino.error("not_found", "mirror " + lazy[2] + " answers no for its files", { userMessage: t("copyFailed") });
+    }
+    return { url: ranked[at].url, mime: ranked[at].mime, label: ranked[at].label, expiresInSeconds: STREAM_EXPIRES_S };
   }
 
   // The unsigned copies, each probed in parallel; a dead one is dropped, an unreachable one is kept.
