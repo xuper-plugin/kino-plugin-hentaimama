@@ -25,6 +25,8 @@ const STREAM_EXPIRES_S = 3600;
 const MAX_ALTERNATIVES = 8;
 // Kino shows at most 24 category tiles.
 const MAX_TILES = 24;
+const POSTER_PARALLEL = 6;
+const SPARE_TILES = 6;
 const POPULAR_GENRES = ["uncensored", "3d", "big-boobs", "blowjob", "creampie", "ahegao", "anal", "school-girls", "harem", "bdsm", "romance", "fantasy", "comedy", "drama", "milf", "ntr", "bondage", "tentacle", "futanari", "yuri", "incest", "monster", "demon", "action"];
 
 // ---- 1. texts -------------------------------------------------------------------------------------------------
@@ -90,6 +92,7 @@ const ENTRY_MAX_CHARS = 48 * 1024;
 const FRESH_LIST_MS = 15 * 60 * 1000;
 const FRESH_SERIES_MS = 60 * 60 * 1000;
 const FRESH_GENRES_MS = 24 * 60 * 60 * 1000;
+const FRESH_ART_MS = 24 * 60 * 60 * 1000;
 // An episode page's player id never changes; the mirror paths it yields are kept briefly.
 const FRESH_PID_MS = 24 * 60 * 60 * 1000;
 const FRESH_MIRRORS_MS = 10 * 60 * 1000;
@@ -383,9 +386,32 @@ const LISTS = {
   recent: { path: "recent-episodes", parse: parseRecentPage, title: "rowRecent" },
 };
 
+// The recent-episodes cards only carry the episode's still (a 16:9 frame that a portrait card crops badly). The series' own
+// poster is on its page, which is cached an hour and is the one the title page opens from anyway; a page that does not
+// answer keeps the still, as the card's backdrop.
+async function withSeriesPosters(items) {
+  await mapLimit(items, POSTER_PARALLEL, async (item) => {
+    const still = item.poster;
+    try {
+      const { info } = await loadSeries(item.id);
+      if (info && info.poster) {
+        item.poster = info.poster;
+        if (still) item.backdrop = still;
+      }
+    } catch (e) {
+      kino.log("poster " + item.id + " failed: " + (e && e.message));
+    }
+  });
+  return items;
+}
+
 async function listPage(kind, page) {
   const def = LISTS[kind];
-  return cached(`list:${kind}:${page}`, FRESH_LIST_MS, async () => def.parse(await getPage(listUrl(def.path, page))));
+  return cached(`list:${kind}:${page}`, FRESH_LIST_MS, async () => {
+    const out = def.parse(await getPage(listUrl(def.path, page)));
+    if (kind === "recent") out.items = await withSeriesPosters(out.items);
+    return out;
+  });
 }
 
 async function genrePage(slug, page) {
@@ -438,7 +464,7 @@ export async function section({ tab }) {
   return answer;
 }
 
-// Genre tiles: the site's own filter list (a label and its slug), kept a day. No art: one request per tile is not worth it.
+// Genre tiles: the site's own filter list (a label and its slug), kept a day.
 export async function categories() {
   const labels = await cached("genres", FRESH_GENRES_MS, async () => {
     const html = await getPage(`${SITE}/genres-filter/`);
@@ -454,7 +480,31 @@ export async function categories() {
     if (slug && !bySlug.has(slug)) bySlug.set(slug, label);
   }
   const order = POPULAR_GENRES.filter((s) => bySlug.has(s)).concat([...bySlug.keys()].filter((s) => POPULAR_GENRES.indexOf(s) < 0));
-  const tiles = order.slice(0, MAX_TILES).map((slug) => ({ id: slug, title: String(bySlug.get(slug)).slice(0, 40), ref: "g:" + slug, adult: true }));
+  // Each tile's art is its genre's first title's poster, kept a day: the first opening asks for it (six at a time), every
+  // later one answers from storage. The site's filter lists a few genres that have no page ("Animal Girls"): asking for the
+  // art finds them out, and they are left out, a few spare candidates standing in for them.
+  const DEAD = "-";
+  const asked = await mapLimit(order.slice(0, MAX_TILES + SPARE_TILES), POSTER_PARALLEL, async (slug) => {
+    let art = "";
+    try {
+      art = await cached("art:" + slug, FRESH_ART_MS, async () => {
+        try {
+          const first = (await genrePage(slug, 1)).items[0];
+          return first && first.poster ? first.poster : "";
+        } catch (e) {
+          if (e && e.code === "not_found") return DEAD;
+          throw e;
+        }
+      });
+    } catch (e) {
+      kino.log("genre " + slug + " art failed: " + (e && e.message));
+    }
+    if (art === DEAD) return null;
+    const tile = { id: slug, title: String(bySlug.get(slug)).slice(0, 40), ref: "g:" + slug, adult: true };
+    if (art) tile.art = art;
+    return tile;
+  });
+  const tiles = asked.filter(Boolean).slice(0, MAX_TILES);
   return tiles;
 }
 
@@ -485,20 +535,25 @@ async function seriesSlugFromEpisode(slug) {
   return best;
 }
 
-export async function episodes(ref) {
-  const m = /^s:([A-Za-z0-9._~-]+)$/.exec(String(ref || ""));
-  if (!m) throw kino.error("not_found", "not a series ref: " + String(ref).slice(0, 80));
-  const data = await cached("series:" + m[1], FRESH_SERIES_MS, async () => {
+// One series page, parsed and kept an hour: what episodes() answers from, and where the recent row's posters come from.
+async function loadSeries(slug) {
+  return cached("series:" + slug, FRESH_SERIES_MS, async () => {
     let page;
     try {
-      page = await getPage(`${SITE}/tvshows/${m[1]}/`);
+      page = await getPage(`${SITE}/tvshows/${slug}/`);
     } catch (e) {
       if (!e || e.code !== "not_found") throw e;
-      const real = await seriesSlugFromEpisode(m[1]);
+      const real = await seriesSlugFromEpisode(slug);
       page = await getPage(`${SITE}/tvshows/${real}/`);
     }
     return parseSeries(page);
   });
+}
+
+export async function episodes(ref) {
+  const m = /^s:([A-Za-z0-9._~-]+)$/.exec(String(ref || ""));
+  if (!m) throw kino.error("not_found", "not a series ref: " + String(ref).slice(0, 80));
+  const data = await loadSeries(m[1]);
   const out = data.episodes.map((e) => Object.assign({ title: t("epTitle", { n: e.number }) }, e));
   return { series: data.info, episodes: out };
 }

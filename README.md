@@ -23,8 +23,10 @@ y un póster con el código bloqueado.
 ## Qué trae
 
 - **Búsqueda** por título (ordenada por parecido, con un segundo intento con el título original).
-- **Inicio:** episodios recientes y la lista de series. **Sección propia** con dos pestañas.
-- **Categorías:** 24 géneros (los más populares primero).
+- **Inicio:** episodios recientes (con el póster de la serie, no la captura del episodio) y la lista de series.
+  **Sección propia** con dos pestañas.
+- **Categorías:** 24 géneros (los más populares primero), cada uno con el póster de su primer título; los géneros que
+  el sitio lista pero no tienen página se omiten.
 - **Episodios:** lista con número, captura y fecha.
 - **Video:** hasta 8 copias por episodio en el menú **Servidor y calidad** (1080p, 720p, 480p, original y dos
   servidores firmados). El ajuste **Calidad preferida** decide cuál abre primero. Se puede descargar.
