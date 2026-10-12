@@ -461,15 +461,47 @@ export async function categories() {
 
 // ---- 8. episodes ----------------------------------------------------------------------------------------------
 
+// The recent-episodes list names episodes, not series: a card's series slug is the episode's without "-episode-N", which
+// is not always the site's own (e.g. "...-the-animation-episode-1" belongs to "...-animation"). When that page is gone,
+// the episode's own page names its series: the /tvshows/ link that shares the longest start with the episode's slug.
+async function seriesSlugFromEpisode(slug) {
+  const html = await getPage(`${SITE}/episodes/${slug}-episode-1/`);
+  const counts = new Map();
+  for (const m of html.matchAll(/hentaimama\.io\/tvshows\/([A-Za-z0-9._~-]+)\//g)) counts.set(m[1], (counts.get(m[1]) || 0) + 1);
+  const common = (a) => {
+    let i = 0;
+    while (i < a.length && i < slug.length && a[i] === slug[i]) i++;
+    return i;
+  };
+  let best = "";
+  let bestScore = 0;
+  for (const [cand, n] of counts) {
+    const score = common(cand) * 10 + n;
+    if (common(cand) >= 5 && score > bestScore) {
+      best = cand;
+      bestScore = score;
+    }
+  }
+  if (!best) throw kino.error("not_found", "no series page for " + slug);
+  return best;
+}
+
 export async function episodes(ref) {
   const m = /^s:([A-Za-z0-9._~-]+)$/.exec(String(ref || ""));
   if (!m) throw kino.error("not_found", "not a series ref: " + String(ref).slice(0, 80));
-  const html = await cached("series:" + m[1], FRESH_SERIES_MS, async () => {
-    const { info, episodes } = parseSeries(await getPage(`${SITE}/tvshows/${m[1]}/`));
-    return { info, episodes };
+  const data = await cached("series:" + m[1], FRESH_SERIES_MS, async () => {
+    let page;
+    try {
+      page = await getPage(`${SITE}/tvshows/${m[1]}/`);
+    } catch (e) {
+      if (!e || e.code !== "not_found") throw e;
+      const real = await seriesSlugFromEpisode(m[1]);
+      page = await getPage(`${SITE}/tvshows/${real}/`);
+    }
+    return parseSeries(page);
   });
-  const out = html.episodes.map((e) => Object.assign({ title: t("epTitle", { n: e.number }) }, e));
-  return { series: html.info, episodes: out };
+  const out = data.episodes.map((e) => Object.assign({ title: t("epTitle", { n: e.number }) }, e));
+  return { series: data.info, episodes: out };
 }
 
 // ---- 9. mirrors and resolve -----------------------------------------------------------------------------------
