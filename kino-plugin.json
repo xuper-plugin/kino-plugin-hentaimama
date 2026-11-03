@@ -1,8 +1,8 @@
 {
   "id": "hentaimama",
   "name": "HentaiMama",
-  "version": "1.1.5",
-  "apiVersion": 6,
+  "version": "1.2.0",
+  "apiVersion": 9,
   "entry": "plugin.js",
   "description": "Hentai 18+ en HD con subtítulos en inglés, desde HentaiMama. Solo se muestra con el código 18+ desbloqueado.",
   "author": "xuper-plugin",
@@ -28,7 +28,8 @@
   ],
   "color": "#E5457B",
   "section": {
-    "label": "HentaiMama"
+    "label": "HentaiMama",
+    "labelEn": "HentaiMama"
   },
   "theme": {
     "accent": "#E5457B",
@@ -94,5 +95,32 @@
     }
   ],
   "telemetry": true,
-  "debug": false
+  "debug": false,
+  "enhancements": {
+    "14": {
+      "capabilities": [
+        "screen"
+      ],
+      "screen": {
+        "label": "HentaiMama",
+        "labelEn": "HentaiMama",
+        "icon": "movie",
+        "menuOpens": "screen",
+        "opensFrom": [
+          "menu",
+          "settings"
+        ],
+        "settingsButton": {
+          "label": "Abrir HentaiMama",
+          "labelEn": "Open HentaiMama"
+        },
+        "settingsIn": "screen"
+      }
+    },
+    "19": {
+      "capabilities": [
+        "screen"
+      ]
+    }
+  }
 }
