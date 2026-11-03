@@ -2,7 +2,7 @@
 // a tab and the cards. Pure functions; index.js keeps the results and view.js draws them.
 
 export const TAB_IDS = ["recientes", "series", "generos"];
-export const MAX_RAILS = 8;
+export const MAX_RAILS = 12;
 export const MAX_RAIL_ITEMS = 20;
 const HTTPS = /^https:\/\//;
 

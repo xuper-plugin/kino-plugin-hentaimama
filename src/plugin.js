@@ -451,17 +451,34 @@ export async function browse(ref, cursor) {
 
 // ---- 7b. the browse screen ------------------------------------------------------------------------------------
 
-const SCREEN_GENRES = ["uncensored", "harem", "romance", "fantasy", "comedy", "drama"];
+const SCREEN_GENRES = ["uncensored", "harem", "romance", "fantasy", "comedy", "drama", "school-girls", "milf", "3d", "bdsm", "ntr", "bondage"];
+const SCREEN_LIST_PAGES = 5;
 
 // One tab of the browse screen as a section page: the recent episodes' series, the series list, or a few genres' first pages.
 // Every card is `adult`, so Kino shows them only while the 18+ code is unlocked.
 async function tabPage(tab) {
   if (tab === "recientes" || tab === "series") {
+    // A tab is a few pages of one list, a rail each (the site has just these two lists): the recent episodes' series newest first,
+    // or the series list, which is alphabetical, each rail named by the letters it spans.
     const kind = tab === "recientes" ? "recent" : "series";
-    const { items } = await listPage(kind, 1);
-    return { rows: items.length ? [{ id: "row-" + kind, title: t(LISTS[kind].title), ref: "l:" + kind, items }] : [] };
+    const pages = await mapLimit(Array.from({ length: SCREEN_LIST_PAGES }, (_, i) => i + 1), 3, async (page) => {
+      try {
+        return (await listPage(kind, page)).items;
+      } catch (e) {
+        kino.log("list " + kind + " " + page + " failed: " + (e && e.message));
+        return [];
+      }
+    });
+    const letter = (item) => (String(item.title).trim()[0] || "").toUpperCase();
+    return {
+      rows: pages.map((items, i) => {
+        if (!items.length) return null;
+        const title = kind === "recent" ? `${t(LISTS[kind].title)} · ${i + 1}` : `${t(LISTS[kind].title)} · ${letter(items[0])}–${letter(items[items.length - 1])}`;
+        return { id: `row-${kind}-${i + 1}`, title, ref: "l:" + kind, items };
+      }).filter(Boolean),
+    };
   }
-  const rows = await mapLimit(SCREEN_GENRES, 3, async (slug) => {
+  const rows = await mapLimit(SCREEN_GENRES, 4, async (slug) => {
     try {
       const { items } = await genrePage(slug, 1);
       const title = slug.replace(/(^|-)([a-z])/g, (_, a, c) => (a ? " " : "") + c.toUpperCase());
