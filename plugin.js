@@ -1019,7 +1019,7 @@ async function episodes(ref) {
   return { series: data.info, episodes: out };
 }
 var QUALITIES = ["1080p", "720p", "480p"];
-var LAZY_KINDS = ["hls-mp4", "newjav", "hls"];
+var LAZY_KINDS = ["hls-mp4", "hls"];
 function mimeOf(url) {
   return /\.m3u8(\?|$)/i.test(url) ? "application/x-mpegURL" : "video/mp4";
 }

@@ -663,7 +663,8 @@ export async function episodes(ref) {
 // So the two fast, unsigned copies are built without opening any iframe and probed with one tiny ranged request each;
 // the signed ones become lazy copies, opened only if the person picks them or the fast ones are gone.
 const QUALITIES = ["1080p", "720p", "480p"];
-const LAZY_KINDS = ["hls-mp4", "newjav", "hls"];
+// newjav (javprovider.com) is left out: its server hung ~25 s and answered 502 on every title tried (2026-11-23).
+const LAZY_KINDS = ["hls-mp4", "hls"];
 
 function mimeOf(url) {
   return /\.m3u8(\?|$)/i.test(url) ? "application/x-mpegURL" : "video/mp4";
