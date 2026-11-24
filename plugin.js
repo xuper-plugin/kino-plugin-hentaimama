@@ -1,13 +1,47 @@
+// src/door.js
+var CATALOG_MAX = 40;
+var OVERVIEW_MAX = 300;
+var HTTPS = /^https:\/\//;
+function catalogItems(found) {
+  const out = [];
+  const list = Array.isArray(found) ? found : found && Array.isArray(found.items) ? found.items : [];
+  for (const it of list) {
+    if (out.length >= CATALOG_MAX) break;
+    if (!it || typeof it.id !== "string" || !it.id || typeof it.ref !== "string" || !it.ref || typeof it.title !== "string" || !it.title) continue;
+    const item = { id: it.id, ref: it.ref, title: it.title, kind: typeof it.kind === "string" && it.kind ? it.kind : "movie" };
+    if (typeof it.poster === "string" && HTTPS.test(it.poster)) item.poster = it.poster;
+    if (typeof it.backdrop === "string" && HTTPS.test(it.backdrop)) item.backdrop = it.backdrop;
+    if (it.year !== void 0 && it.year !== null && String(it.year)) item.year = String(it.year);
+    if (typeof it.overview === "string" && it.overview.trim()) item.overview = it.overview.trim().slice(0, OVERVIEW_MAX);
+    const tmdb = it.ids && Number.isInteger(it.ids.tmdb) ? it.ids.tmdb : Number.isInteger(it.tmdb) ? it.tmdb : 0;
+    if (tmdb > 0) item.tmdb = tmdb;
+    out.push(item);
+  }
+  return out;
+}
+function catalogQuery(arg) {
+  const q = String(arg && arg.q || "").trim().slice(0, 200);
+  const type = arg && (arg.type === "movie" || arg.type === "series") ? arg.type : "any";
+  return { q, type, season: 0, episode: 0, tmdbId: 0, year: 0, originalTitle: "", altTitles: [], cursor: null };
+}
+function catalogDoor(search2) {
+  return async (arg) => {
+    const query = catalogQuery(arg);
+    if (!query.q) return [];
+    return catalogItems(await search2(query));
+  };
+}
+
 // src/browse/model.js
 var TAB_IDS = ["recientes", "series", "generos"];
 var MAX_RAILS = 12;
 var MAX_RAIL_ITEMS = 20;
-var HTTPS = /^https:\/\//;
+var HTTPS2 = /^https:\/\//;
 function cardOf(item) {
   const out = { id: item.id, ref: item.ref, title: item.title, kind: item.kind };
   const poster = item.poster || item.logo;
-  if (poster && HTTPS.test(poster)) out.poster = poster;
-  if (item.backdrop && HTTPS.test(item.backdrop)) out.backdrop = item.backdrop;
+  if (poster && HTTPS2.test(poster)) out.poster = poster;
+  if (item.backdrop && HTTPS2.test(item.backdrop)) out.backdrop = item.backdrop;
   if (item.rating !== void 0) out.rating = item.rating;
   if (item.year !== void 0) out.year = item.year;
   if (item.ids && item.ids.tmdb) out.ids = { tmdb: item.ids.tmdb };
@@ -748,6 +782,7 @@ function searchUrl(q, page) {
   const enc = encodeURIComponent(q);
   return page > 1 ? `${SITE}/page/${page}/?s=${enc}` : `${SITE}/?s=${enc}`;
 }
+var proto_catalog_search = catalogDoor(search);
 async function search(query) {
   const q = kino.rank.shortQuery(String(query.q || "").trim());
   if (!q) return { items: [] };
@@ -1278,6 +1313,7 @@ export {
   categories,
   episodes,
   home,
+  proto_catalog_search,
   resolve,
   screen,
   screenEvent,

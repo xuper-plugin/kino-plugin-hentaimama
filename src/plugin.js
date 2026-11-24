@@ -1,5 +1,6 @@
 // @ts-check
 /// <reference path="./kino.d.ts" />
+import { catalogDoor } from "./door.js";
 import { makeBrowse } from "./browse/index.js";
 // Kino plugin: HentaiMama -- 18+ anime with English subtitles, read straight from hentaimama.io (no addon in between).
 // Every title and episode is marked `adult`, so Kino shows them only while the person's 18+ code is unlocked.
@@ -361,6 +362,9 @@ function searchUrl(q, page) {
   const enc = encodeURIComponent(q);
   return page > 1 ? `${SITE}/page/${page}/?s=${enc}` : `${SITE}/?s=${enc}`;
 }
+
+// The catalog door (Kino protocol, apiVersion 20 through enhancements): Da-Video and the author's other plugins find titles here.
+export const proto_catalog_search = catalogDoor(search);
 
 export async function search(query) {
   const q = kino.rank.shortQuery(String(query.q || "").trim());
